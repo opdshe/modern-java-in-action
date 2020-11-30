@@ -56,4 +56,54 @@ for (int i = 300; i < 400; i++) {
   list.add(i);
 }
 ```
-이처럼 불필요한 박싱과정은 피하기 위해 자바는 기본형에 특화된 인터페이스를 제공한다. **IntPredicate, IntToDoubleFunction, LongSupplier** 등이 이에 해당된다. 
+이처럼 불필요한 박싱과정은 피하기 위해 자바는 기본형에 특화된 인터페이스를 제공한다. **IntPredicate, IntToDoubleFunction, LongSupplier** 등이 이에 해당된다.  
+<br>
+
+
+## 지역 변수의 제약
+람다에서는 **자유 변수**(파라미터로 넘겨진 변수가 아닌 외부에서 정의된 변수)에 접근이 가능하다. 단, 람다에서 사용될 지역 변수는 명시적으로 final이 선언되어 있어야 하거나, 실질적으로 **final로 선언된 변수와 똑같이 사용되어야 한다.** 즉, 재할당이 불가능하다. 예를 들어 아래와 같은 코드는 컴파일 할 수 없다.
+```
+int portNumber = 1337;
+Runnable r = () -> System.out.println(portNumber);
+portNumber = 31337;
+```
+<br>
+
+**✨ 지역 변수의 제약이 필요한 이유**  
+
+**인스턴스 변수는 힙**에 저장되는 반면, **지역 변수는 스택에 저장된다** 멀티 스레드 환경에서 실행할 때 각 스레드는 개별적 스택을 가진다. 이는 동기화 문제를 초래할 수 있어서 자바에서는 람다에서 자유 변수에 접근 시 원래 변수에 접근을 허용하는 것이 아니라 자유 지역 변수의 **복사본을 제공한다.** 따라서 복사본의 값이 바귀지 않아야 하므로 지역 변수에는 한 번만 값을 할당해야 한다는 제약이 생긴 것이다.  
+<br>
+
+
+## 메서드 참조
+메서드 참조를 이용하면 기존의 메서드 정의를 재활용해서 람다처럼 전달할 수 있다. 쉽게 말해 **메서드 참조는 람다의 축약형**이라고도 할 수 있다. 메서드 참조를 이용하면 조금 더 **가독성을 높일 수 있다.** 예를 들어, 
+```(Apple apple) -> apple.getWeight()``` 보다는 ```Apple::getWeight```가 훨씬 눈에 잘 들어온다. 
+
+### 생성자 참조
+인수가 없는 생성자는 Supplier에 담을 수 있다 (void -> R 반환)  
+``` Supplier<Apple> constructor = Apple::new;```  
+인수가 있는 생성자는 Function에 담을 수 있다. (T -> R 반환)  
+``` Function<Integer, Apple> constructor = Apple::new;```  
+<br>
+
+#### ✨생성자에 인수가 여러개라면?
+BiFunction, TriFunction과 같은 인터페이스를 통해 구현이 가능하다
+```
+BiFunction<Color, Integer, Apple> constructor = Apple::new;
+```
+
+### 알아두면 좋은 구현법
+```
+static Map<String, Function<Integer, Fruit>> map = new HashMap<>();
+static {
+  map.put("apple", Apple::new);
+  map.put("orange", Orange::new);
+  //등등
+}
+
+public static Fruit giveMeFruit(String fruit, Integer weight){
+  return map.get(fruit.toLowerCase())
+            .apply(weight);
+}
+```
+처음 봤을 땐 이해하기 어려웠지만, 한 번 이해하고 나니 굉장히 유용하게 사용할 수 있을 것 같다는 생각이 든다. (ex. 사용자의 입력에 해당하는 커맨드 매핑)
